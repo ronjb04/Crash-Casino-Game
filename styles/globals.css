@@ -18,16 +18,33 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: #151a22;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+:not(.touch)::-webkit-scrollbar, :not(.touch) ::-webkit-scrollbar {
+  width: 2px;
+  height: 1px;
+  -webkit-appearance: none;
+  -webkit-border-radius: 100px;
+  border-radius: 100px;
+}
+:not(.touch)::-webkit-scrollbar-thumb, :not(.touch)::-webkit-scrollbar-thumb, :not(.touch)::-webkit-scrollbar-thumb:vertical, :not(.touch)::-webkit-scrollbar-thumb:vertical {
+  background-color: #202630;
+  border: none;
+  -webkit-border-radius: 100px;
+  border-radius: 100px;
+}
+:not(.touch)::-webkit-scrollbar-track, :not(.touch) ::-webkit-scrollbar-track {
+  background: #e8e8e8;
+  -webkit-border-radius: 100px;
+  border-radius: 100px;
+}
+:not(.touch)::selection, :not(.touch) ::selection {
+  background: #202630;
 }

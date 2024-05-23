@@ -1,0 +1,64 @@
+// styles/Root.module.scss
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #121212;
+  color: #fff;
+  height: 100vh;
+}
+
+.gameHeader {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 20px;
+  background-color: #1e1e1e;
+}
+
+.controlPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: #1e1e1e;
+}
+
+.speedControl {
+  display: flex;
+  justify-content: center;
+  margin: 20px;
+}
+
+.rankingContainer {
+  margin: 20px;
+}
+
+.chatContainer {
+  width: 100%;
+}
+
+.gameBoard{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  width: 100%;
+  position: relative;
+}
+.graphwr{
+  display: flex;
+}
+
+.animatedNumber{
+  display: flex;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 110px;
+  justify-content: center;
+  align-items: center;
+  font-size: 4rem;
+  font-weight: 700;
+  text-shadow: 0px 0px .4rem #fff;
+}

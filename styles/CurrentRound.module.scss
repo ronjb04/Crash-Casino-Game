@@ -1,0 +1,19 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.th, .td {
+  background: #444;
+  color: #fff;
+  padding: 10px;
+  text-align: center;
+}
+.thName,.tdName{
+  text-align: left;
+}
+
+.th {
+  background: #333;
+}

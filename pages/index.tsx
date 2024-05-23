@@ -1,118 +1,222 @@
-import Image from "next/image";
-import { Inter } from "next/font/google";
+import React, { useState, useEffect, useCallback } from 'react';
+import WelcomeLogin from '../components/WelcomeLogin';
+import StatusBar from '../components/StatusBar';
+import NumberInput from '../components/NumberInput';
+import MultiplierGraph from '../components/MultiplierGraph';
+import CurrentRound from '../components/CurrentRound';
+import SpeedSlider from '../components/SpeedSlider';
+import Ranking from '../components/Ranking';
+import Chat from '../components/Chat';
+import AnimatedNumber from '../components/AnimatedNumber';
+import styles from '../styles/Root.module.scss';
+import io from 'socket.io-client';
 
-const inter = Inter({ subsets: ["latin"] });
+const socket = io('http://localhost:4000'); // Update with your server URL
 
-export default function Home() {
+interface Player {
+  name: string;
+  points: number;
+  multiplier: number;
+}
+
+interface GraphDataPoints {
+  name: string;
+  multiplier?: number;
+}
+
+const defaultData: GraphDataPoints[] = [
+  { name: '0' },
+  { name: '1' },
+  { name: '2' },
+  { name: '3' },
+  { name: '4' },
+  { name: '5' },
+  { name: '6' },
+  { name: '7' },
+  { name: '8' },
+  { name: '9' },
+  { name: '10' },
+];
+
+const roundDefault: Player[] = [
+  { name: 'You', points: 0, multiplier: 0 },
+  { name: 'CPU 1', points: 0, multiplier: 0 },
+  { name: 'CPU 2', points: 0, multiplier: 0 },
+  { name: 'CPU 3', points: 0, multiplier: 0 },
+  { name: 'CPU 4', points: 0, multiplier: 0 },
+];
+
+const generateData = (): GraphDataPoints[] => {
+  const data: GraphDataPoints[] = [];
+  const lastResult = parseFloat((Math.random() * 11).toFixed(2)); // Random value for the last round
+  data.push({ name: '10', multiplier: lastResult });
+
+  // Generate the initial rounds based on the random value of the last round
+  let currentResult = lastResult;
+  for (let i = 9; i >= 0; i--) {
+    currentResult *= 0.85; // Decrement factor for a downward curve
+    data.push({ name: `${i}`, multiplier: parseFloat(currentResult.toFixed(2)) });
+  }
+
+  return data.reverse(); // Reverse the data array to start with the first round
+};
+
+const getRandomValueFromMultiples = (min: number, max: number, step: number) => {
+  const multiples = Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step);
+  return multiples[Math.floor(Math.random() * multiples.length)];
+};
+
+const randomPoints = () => getRandomValueFromMultiples(50, 1000, 25);
+const randomMultipliers = () => parseFloat(getRandomValueFromMultiples(1.0, 10, 0.25).toFixed(2));
+
+const Home: React.FC = () => {
+  const [points, setPoints] = useState<number>(50); // Min and default value is 50, increment by 25
+  const [multiplier, setMultiplier] = useState<number>(1.0); // Min and default value is 1.00, increment by 0.25
+  const [speed, setSpeed] = useState<number>(1);
+  const [speedMs, setSpeedMs] = useState<number>(5000);
+  const [data, setData] = useState<GraphDataPoints[]>(defaultData);
+  const [result, setResult] = useState<number>(0);
+  const [chartKey, setChartKey] = useState<number>(0);
+  const [round, setRound] = useState<Player[]>(roundDefault);
+  const [ranking, setRanking] = useState<Player[]>(roundDefault);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [userName, setUserName] = useState<string>('');
+  const [userPoints, setUserPoints] = useState<number>(1000); // Example points
+
+  useEffect(() => {
+    if (isLoggedIn && !localStorage.getItem('demoMessagesSent')) {
+      autoGenerateChat();
+      localStorage.setItem('demoMessagesSent', 'true');
+    }
+  }, [isLoggedIn]);
+
+  const handleLoginSuccess = (name: string) => {
+    setIsLoggedIn(true);
+    setUserName(name);
+  };
+
+  const autoGenerateChat = () => {
+    const demoMessages = [
+      { user: 'CPU 1', text: 'hi guys' },
+      { user: 'CPU 2', text: 'Hilliiiili men' },
+      { user: 'CPU 1', text: 'I could play this game for hours!' }
+    ];
+
+    demoMessages.forEach((msg, index) => {
+      setTimeout(() => {
+        socket.emit('sendMessage', msg);
+      }, index * 2000); // Delay each message by 2 seconds
+    });
+  };
+
+  const startGame = useCallback(() => {
+    console.log("startGame");
+    setUserPoints(prevPoints => prevPoints - points);
+    setData(defaultData);
+    setResult(0);
+
+    setTimeout(() => {
+      const newData = generateData();      
+      setData(newData); 
+      const newResult = newData[10]?.multiplier ?? 0;
+      setResult(newResult);
+      console.log("newResult ===== "+newResult)
+
+      
+
+      setChartKey(prevKey => prevKey + 1); 
+      const newRound = [
+        { name: 'You', points, multiplier },
+        ...['CPU 1', 'CPU 2', 'CPU 3', 'CPU 4'].map(cpu => ({
+          name: cpu,
+          points: randomPoints(),
+          multiplier: randomMultipliers()
+        }))
+      ].map(player => ({
+        ...player,
+        points: player.points * player.multiplier
+      }));
+
+      setRound(newRound);
+      
+      setTimeout(() => {
+
+        if(newResult > multiplier){
+          console.log("------------ YOU have won")
+          setUserPoints(prevPoints => prevPoints + (points * multiplier));
+        }else{
+          console.log("------------ YOU lost")
+        }
+
+        setRanking(prevRanking => {
+          const updatedRanking = prevRanking.map(player => {
+            const roundPlayer = newRound.find(p => p.name === player.name);
+            return roundPlayer
+              ? { ...player, points: player.points + roundPlayer.points }
+              : player;
+          });
+          return updatedRanking.sort((a, b) => b.points - a.points);
+        });
+      }, speedMs);
+    }, 1000);
+  }, [result, points, multiplier, speedMs]);
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="py-10 px-5">
+      <div className="container mx-auto px-8">
+        <div className="grid grid-cols-12 gap-6">
+          {!isLoggedIn ? (
+            <div className="col-span-4">
+              <WelcomeLogin onLoginSuccess={handleLoginSuccess} />
+            </div>
+          ) : (
+            <div className="col-span-4">
+              <div className="styles.gameHeader">
+                <div className="flex justify-center items-center columns-6 gap-3">
+                  <NumberInput
+                    label="Points"
+                    value={points}
+                    min={50}
+                    step={25}
+                    max={userPoints}
+                    onChange={setPoints}
+                  />
+                  <NumberInput
+                    label="Multiplier"
+                    value={multiplier}
+                    min={1.0}
+                    step={0.25}
+                    max={10}
+                    onChange={setMultiplier}
+                  />
+                </div>
+              </div>
+              <button onClick={startGame} className="text-white font-bold py-2 px-4 rounded bg-gradient-to-r from-pink-500 to-red-500 w-full my-4">
+                Start
+              </button>
+              <CurrentRound players={round} />
+              <div>
+                <SpeedSlider speed={speed} setSpeed={setSpeed} setSpeedMs={setSpeedMs} />
+              </div>
+            </div>
+          )}
+          <div className="col-span-8">
+            <StatusBar loggedIn={isLoggedIn} userName={userName} points={userPoints} />
+            <div className={styles.gameBoard}>
+              <AnimatedNumber value={result} speedMs={speedMs} className={styles.animatedNumber} />
+              <MultiplierGraph key={chartKey} data={data} speedMs={speedMs} />
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+      <div className="container mx-auto px-8">
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-6"><Ranking players={ranking} /></div>
+          <div className="col-span-6"><Chat userName={userName} /></div>
+        </div>
       </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
-}
+};
+
+export default Home;
