@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import io from 'socket.io-client';
+
 import WelcomeLogin from '../components/WelcomeLogin';
 import StatusBar from '../components/StatusBar';
 import NumberInput from '../components/NumberInput';
@@ -8,8 +10,9 @@ import SpeedSlider from '../components/SpeedSlider';
 import Ranking from '../components/Ranking';
 import Chat from '../components/Chat';
 import AnimatedNumber from '../components/AnimatedNumber';
+import YouLose from '../components/YouLose';
+
 import styles from '../styles/Root.module.scss';
-import io from 'socket.io-client';
 
 const socket = io('http://localhost:4000'); // Update with your server URL
 
@@ -46,7 +49,7 @@ const roundDefault: Player[] = [
   { name: 'CPU 4', points: 0, multiplier: 0 },
 ];
 
-const generateData = (): GraphDataPoints[] => {
+const generateGraphData = (): GraphDataPoints[] => {
   const data: GraphDataPoints[] = [];
   const lastResult = parseFloat((Math.random() * 11).toFixed(2)); // Random value for the last round
   data.push({ name: '10', multiplier: lastResult });
@@ -82,6 +85,7 @@ const Home: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userPoints, setUserPoints] = useState<number>(1000); // Example points
+  const [userWon, setUserWon] = useState<boolean>();
 
   useEffect(() => {
     if (isLoggedIn && !localStorage.getItem('demoMessagesSent')) {
@@ -116,13 +120,10 @@ const Home: React.FC = () => {
     setResult(0);
 
     setTimeout(() => {
-      const newData = generateData();      
+      const newData = generateGraphData();      
       setData(newData); 
       const newResult = newData[10]?.multiplier ?? 0;
       setResult(newResult);
-      console.log("newResult ===== "+newResult)
-
-      
 
       setChartKey(prevKey => prevKey + 1); 
       const newRound = [
@@ -140,12 +141,22 @@ const Home: React.FC = () => {
       setRound(newRound);
       
       setTimeout(() => {
-
+        //Check if user lower multiplier to the result
         if(newResult > multiplier){
-          console.log("------------ YOU have won")
           setUserPoints(prevPoints => prevPoints + (points * multiplier));
+          setTimeout(() => {
+            setUserWon(true)
+            setTimeout(() => {
+              setUserWon(null)
+            }, 5000);
+          }, 2000);
         }else{
-          console.log("------------ YOU lost")
+          setTimeout(() => {
+            setUserWon(false)
+            setTimeout(() => {
+              setUserWon(null)
+            }, 5000);
+          }, 2000);
         }
 
         setRanking(prevRanking => {
@@ -200,7 +211,8 @@ const Home: React.FC = () => {
               </div>
             </div>
           )}
-          <div className="col-span-8">
+          <div className="col-span-8 relative">
+          {userWon != null ? <YouLose userWon={userWon} /> : null}
             <StatusBar loggedIn={isLoggedIn} userName={userName} points={userPoints} />
             <div className={styles.gameBoard}>
               <AnimatedNumber value={result} speedMs={speedMs} className={styles.animatedNumber} />
