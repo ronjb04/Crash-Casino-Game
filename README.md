@@ -1,5 +1,10 @@
 ## Getting Started
 
+A crash casino game made for a job application
+
+https://github.com/user-attachments/assets/caf90f8d-ba05-474e-a60e-671565f5ddef
+
+
 First install packages:
 
 ```bash
